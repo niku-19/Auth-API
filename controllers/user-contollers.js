@@ -280,3 +280,112 @@ export const findUserByPhoneNumber = async ( req , res) => {
         })
     }
 }
+
+export const addReviewToMovies = async (req, res) => {
+	const { movieId } = req.params;
+	const { reviewText, rating } = req.body;
+	const { id } = req.user;
+
+	try {
+		if (!reviewText || !rating) {
+			return res.status(400).json({
+				message: "Missing fields",
+				success: false,
+			});
+		}
+		const foundMovie = await movieModel.findById({ _id: movieId });
+		if (!foundMovie) {
+			return res.status(404).json({
+				message: "Movie not found",
+				success: false,
+			});
+		}
+		const newReview = new reviewModel({
+			movieId: foundMovie._id,
+			userId: id,
+			reviewText: reviewText,
+			rating: rating,
+		});
+		await newReview.save();
+		await movieModel.updateOne(
+			{ _id: movieId },
+			{
+				$push: { review: newReview._id },
+			}
+		);
+		return res.status(200).json({
+			message: "Review added successfully",
+			success: true,
+			data: newReview,
+		});
+	} catch (error) {
+		throw error;
+	}
+};
+
+export const getMovieReviews = async (req, res) => {
+	const { movieId } = req.params;
+	try {
+		const foundReviews = await reviewModel
+			.find({ movieId: movieId })
+			.populate({
+				path: "userId",
+				select: "-__v -createdAt -password",
+			})
+			.select("-movieId -__v -updatedAt");
+		if (!foundReviews.length) {
+			return res.status(404).json({
+				message: "Review not Found for this movie",
+				success: false,
+			});
+		}
+		return res.status(200).json({
+			message: "Review Load successfully",
+			success: true,
+			data: foundReviews,
+		});
+	} catch (error) {
+		throw error;
+	}
+};
+
+export const addMovies = async (req, res) => {
+	const {
+		title,
+		releaseYear,
+		genre,
+		director,
+		actors,
+		language,
+		country,
+		rating,
+		plot,
+		award,
+		posterUrl,
+		trailerUrl,
+	} = req.body;
+	try {
+		const newMovie = new movieModel({
+			title: title,
+			releaseYear: releaseYear,
+			genre: genre,
+			director: director,
+			actor: actors,
+			language: language,
+			country: country,
+			rating: rating,
+			plot: plot,
+			award: award,
+			posterUrl: posterUrl,
+			trailerUrl: trailerUrl,
+		});
+		await newMovie.save();
+		return res.json({
+			message: "Movie added success",
+			success: true,
+			data: newMovie,
+		});
+	} catch (error) {
+		console.log(error);
+	}
+};
